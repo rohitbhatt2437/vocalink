@@ -30,8 +30,15 @@ export const completeOnboarding = async (userData) => {
 };
 
 export async function getUserFriends() {
-  const response = await axiosInstance.get("/users/friends");
-  return response.data;
+  try {
+    console.log("Fetching friends...");
+    const response = await axiosInstance.get("/users/friends");
+    console.log("Friends response:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching friends:", error.response?.data || error.message);
+    throw error;
+  }
 }
 
 export async function getRecommendedUsers() {

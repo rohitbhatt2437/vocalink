@@ -22,13 +22,24 @@ export async function getRecommendedUsers(req, res) {
 
 export async function getMyFriends(req, res) {
   try {
+    console.log("Getting friends for user:", req.user.id);
+    
     const user = await User.findById(req.user.id)
       .select("friends")
-      .populate("friends", "fullName profilePic nativeLanguage learningLanguage");
+      .populate({
+        path: "friends",
+        select: "fullName profilePic nativeLanguage learningLanguage bio location",
+      });
 
+    if (!user) {
+      console.log("User not found");
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log("Found friends:", user.friends);
     res.status(200).json(user.friends);
   } catch (error) {
-    console.error("Error in getMyFriends controller", error.message);
+    console.error("Error in getMyFriends controller:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
@@ -82,8 +93,10 @@ export async function sendFriendRequest(req, res) {
 export async function acceptFriendRequest(req, res) {
   try {
     const { id: requestId } = req.params;
+    console.log("Accepting friend request:", requestId);
 
     const friendRequest = await FriendRequest.findById(requestId);
+    console.log("Found friend request:", friendRequest);
 
     if (!friendRequest) {
       return res.status(404).json({ message: "Friend request not found" });
@@ -91,25 +104,43 @@ export async function acceptFriendRequest(req, res) {
 
     // Verify the current user is the recipient
     if (friendRequest.recipient.toString() !== req.user.id) {
+      console.log("Auth error - Request recipient:", friendRequest.recipient, "Current user:", req.user.id);
       return res.status(403).json({ message: "You are not authorized to accept this request" });
     }
 
     friendRequest.status = "accepted";
     await friendRequest.save();
+    console.log("Updated friend request status to accepted");
 
     // add each user to the other's friends array
     // $addToSet: adds elements to an array only if they do not already exist.
-    await User.findByIdAndUpdate(friendRequest.sender, {
-      $addToSet: { friends: friendRequest.recipient },
+    const [sender, recipient] = await Promise.all([
+      User.findByIdAndUpdate(
+        friendRequest.sender,
+        { $addToSet: { friends: friendRequest.recipient } },
+        { new: true }
+      ).select("friends"),
+      User.findByIdAndUpdate(
+        friendRequest.recipient,
+        { $addToSet: { friends: friendRequest.sender } },
+        { new: true }
+      ).select("friends")
+    ]);
+
+    console.log("Updated friends lists:", {
+      sender: sender.friends,
+      recipient: recipient.friends
     });
 
-    await User.findByIdAndUpdate(friendRequest.recipient, {
-      $addToSet: { friends: friendRequest.sender },
+    res.status(200).json({ 
+      message: "Friend request accepted",
+      updatedFriendLists: {
+        sender: sender.friends,
+        recipient: recipient.friends
+      }
     });
-
-    res.status(200).json({ message: "Friend request accepted" });
   } catch (error) {
-    console.log("Error in acceptFriendRequest controller", error.message);
+    console.error("Error in acceptFriendRequest controller:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 }

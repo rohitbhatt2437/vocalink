@@ -1,14 +1,24 @@
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { LANGUAGE_TO_FLAG } from "../constants";
+import { generateInitialAvatar } from "../lib/avatar";
 
 const FriendCard = ({ friend }) => {
+  // Always use initial-based avatar
+  const avatarSrc = generateInitialAvatar(friend?.fullName);
+
   return (
     <div className="card bg-base-200 hover:shadow-md transition-shadow">
       <div className="card-body p-4">
         {/* USER INFO */}
         <div className="flex items-center gap-3 mb-3">
-          <div className="avatar size-12">
-            <img src={friend.profilePic} alt={friend.fullName} />
+          <div className="avatar">
+            <div className="w-12 h-12 rounded-full overflow-hidden">
+              <img
+                src={avatarSrc}
+                alt={friend?.fullName || "User"}
+                className="w-full h-full"
+              />
+            </div>
           </div>
           <h3 className="font-semibold truncate">{friend.fullName}</h3>
         </div>

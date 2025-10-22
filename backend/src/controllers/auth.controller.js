@@ -25,8 +25,19 @@ export async function signup(req, res) {
       return res.status(400).json({ message: "Email already exists, please use a diffrent one" });
     }
 
-    const idx = Math.floor(Math.random() * 100) + 1; // generate a num between 1-100
-    const randomAvatar = `https://avatar.iran.liara.run/public/${idx}.png`;
+    // Generate a data URI for the initial-based avatar
+    const size = 64;
+    const initial = fullName.trim().charAt(0).toUpperCase();
+    const colors = ['#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c', '#0891b2', '#c026d3'];
+    const colorIndex = initial.charCodeAt(0) % colors.length;
+    const bg = colors[colorIndex];
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <rect width="100%" height="100%" fill="${bg}" rx="8" ry="8"/>
+        <text x="50%" y="50%" dy=".35em" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="${size/2}px" font-weight="bold">${initial}</text>
+      </svg>
+    `;
+    const randomAvatar = `data:image/svg+xml;utf8,${encodeURIComponent(svg.trim())}`;
 
     const newUser = await User.create({
       email,
